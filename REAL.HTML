@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sniff Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-image: url('https://images.unsplash.com/photo-1595433562696-a8f5a06f0c83');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      color: white;
+      padding-top: 50px;
+      transition: background-color 1s ease;
+    }
+
+    h1 {
+      color: #ffffff;
+      text-shadow: 2px 2px 5px black;
+    }
+
+    #sniffCount {
+      font-size: 2em;
+      margin: 20px;
+      text-shadow: 1px 1px 4px black;
+    }
+
+    .button {
+      padding: 15px 30px;
+      font-size: 1.2em;
+      margin: 10px;
+      background-color: rgba(38, 166, 154, 0.8);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background-color: rgba(0, 121, 107, 0.9);
+    }
+
+    .red-bg { background-image: none !important; background-color: red !important; }
+    .orange-bg { background-image: none !important; background-color: orange !important; }
+    .blue-bg { background-image: none !important; background-color: blue !important; }
+    .green-bg { background-image: none !important; background-color: green !important; }
+
+    #achievement {
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2em;
+      font-weight: bold;
+      color: gold;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px 40px;
+      border-radius: 20px;
+      display: none;
+      z-index: 9999;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 9998;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>👃 Sniff Tracker</h1>
+  <p>Click every time you sniff. Or undo a mistake.</p>
+
+  <div id="sniffCount">Sniffs Today: 0</div>
+  <div id="achievement"></div>
+
+  <button class="button" onclick="recordSniff()">I Sniffed</button>
+  <button class="button" onclick="undoSniff()">Undo Sniff</button>
+
+  <canvas id="confettiCanvas"></canvas>
+
+  <script>
+    const todayKey = new Date().toISOString().split('T')[0];
+    let sniffData = JSON.parse(localStorage.getItem('sniffData') || '{}');
+    let achievementsShown = JSON.parse(localStorage.getItem('sniffAchievements') || '{}');
+    sniffData[todayKey] = sniffData[todayKey] || 0;
+    achievementsShown[todayKey] = achievementsShown[todayKey] || [];
+
+    const sniffCountDiv = document.getElementById('sniffCount');
+    const achievementDiv = document.getElementById('achievement');
+
+    function updateUI() {
+      const count = sniffData[todayKey];
+      sniffCountDiv.textContent = `Sniffs Today: ${count}`;
+      document.body.classList.remove('green-bg', 'blue-bg', 'orange-bg', 'red-bg');
+
+      if (count >= 60) {
+        document.body.classList.add('red-bg');
+      } else if (count >= 45) {
+        document.body.classList.add('orange-bg');
+      } else if (count >= 35) {
+        document.body.classList.add('blue-bg');
+      } else if (count >= 20) {
+        document.body.classList.add('green-bg');
+      }
+
+      checkAchievements(count);
+    }
+
+    function recordSniff() {
+      const count = sniffData[todayKey];
+
+      if (count >= 60) {
+        showAchievement("🚫 Sniff Limit Reached! 60 is your limit for today.");
+        return;
+      }
+
+      sniffData[todayKey]++;
+      localStorage.setItem('sniffData', JSON.stringify(sniffData));
+      updateUI();
+    }
+
+    function undoSniff() {
+      if (sniffData[todayKey] > 0) {
+        sniffData[todayKey]--;
+        localStorage.setItem('sniffData', JSON.stringify(sniffData));
+        updateUI();
+      }
+    }
+
+    function checkAchievements(count) {
+      const currentAch = achievementsShown[todayKey];
+      const achList = [
+        { count: 25, message: "🎉 Achievement: Quarter Sniff Champion!" },
+        { count: 50, message: "🌟 Achievement: Halfway Sniff Boss!" },
+        { count: 100, message: "💥 Achievement: Sniff Master of the Universe!" }
+      ];
+
+      achList.forEach((ach) => {
+        if (count === ach.count && !currentAch.includes(ach.count)) {
+          showAchievement(ach.message);
+          currentAch.push(ach.count);
+          localStorage.setItem('sniffAchievements', JSON.stringify(achievementsShown));
+        }
+      });
+    }
+
+    function showAchievement(text) {
+      achievementDiv.textContent = text;
+      achievementDiv.style.display = 'block';
+      launchConfetti();
+
+      setTimeout(() => {
+        achievementDiv.style.display = 'none';
+        stopConfetti();
+      }, 2000);
+    }
+
+    // Confetti logic
+    const canvas = document.getElementById("confettiCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let particles = [];
+    function launchConfetti() {
+      particles = Array.from({ length: 100 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * -canvas.height,
+        size: Math.random() * 6 + 4,
+        speed: Math.random() * 5 + 2,
+        color: `hsl(${Math.random() * 360}, 100%, 50%)`
+      }));
+      requestAnimationFrame(updateConfetti);
+    }
+
+    function updateConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        p.y += p.speed;
+        if (p.y > canvas.height) p.y = -10;
+      });
+      if (particles.length > 0) requestAnimationFrame(updateConfetti);
+    }
+
+    function stopConfetti() {
+      particles = [];
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    updateUI();
+  </script>
+</body>
+</html>
+
